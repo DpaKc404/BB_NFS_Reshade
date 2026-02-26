@@ -4,6 +4,7 @@
  */
 
 #include "hook.hpp"
+#include <atomic>
 #include <cassert>
 #include <MinHook.h>
 
@@ -15,7 +16,7 @@ static_assert(static_cast<int>(reshade::hook::status::unsupported_function) == M
 static_assert(static_cast<int>(reshade::hook::status::allocation_failure) == MH_ERROR_MEMORY_ALLOC);
 static_assert(static_cast<int>(reshade::hook::status::memory_protection_failure) == MH_ERROR_MEMORY_PROTECT);
 
-static unsigned long s_reference_count = 0;
+static std::atomic<unsigned long> s_reference_count = 0;
 
 void reshade::hook::enable() const
 {

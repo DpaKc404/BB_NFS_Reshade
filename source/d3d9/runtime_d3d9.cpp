@@ -247,7 +247,11 @@ void reshade::d3d9::runtime_d3d9::on_reset()
 // NFS variant
 void reshade::d3d9::runtime_d3d9::on_nfs_present()
 {
-	if (!_is_initialized )
+	if (!_is_initialized)
+		return;
+
+	// Ensure we are inside a scene for proper D3D9 rendering
+	if (FAILED(_device->BeginScene()))
 		return;
 
 	assert(_buffer_detection != nullptr);
@@ -282,6 +286,8 @@ void reshade::d3d9::runtime_d3d9::on_nfs_present()
 		_device->SetSoftwareVertexProcessing(software_rendering_enabled);
 	// Apply previous state from application
 	_app_state.apply_and_release();
+
+	_device->EndScene();
 
 #if RESHADE_DEPTH
 	// Can only reset the tracker after the state block has been applied, to ensure current depth-stencil binding is updated correctly
@@ -912,6 +918,8 @@ bool reshade::d3d9::runtime_d3d9::init_texture(texture &texture)
 	{
 		LOG(ERROR) << "Failed to create texture '" << texture.unique_name << "'! HRESULT is " << hr << '.';
 		LOG(DEBUG) << "> Details: Width = " << texture.width << ", Height = " << texture.height << ", Levels = " << levels << ", Usage = " << usage << ", Format = " << format;
+		delete impl;
+		texture.impl = nullptr;
 		return false;
 	}
 

@@ -925,6 +925,8 @@ void __declspec(naked) MotionBlur_EntryPoint()
 void __stdcall ReShade_Hook()
 {
 	Direct3DDevice9* g_pd3dDevice = *(Direct3DDevice9**)NFS_D3D9_DEVICE_ADDRESS;
+	if (!g_pd3dDevice || !g_pd3dDevice->_implicit_swapchain || !g_pd3dDevice->_implicit_swapchain->_runtime)
+		return;
 #ifdef GAME_UC
 	bGlobalMotionBlur = g_pd3dDevice->_implicit_swapchain->_runtime->bMotionBlur; // hax for MotionBlur toggle because we can't read from runtime in the game...
 #endif
@@ -933,7 +935,7 @@ void __stdcall ReShade_Hook()
 
 int NFSUC_ExitPoint1 = NFSUC_EXIT1;
 int NFSUC_ExitPoint2 = NFSUC_EXIT2;
-int NFSUC_EntryPoint_EBX = 0;
+volatile int NFSUC_EntryPoint_EBX = 0;
 void __declspec(naked) ReShade_EntryPoint()
 {
 	_asm mov NFSUC_EntryPoint_EBX, ebx
@@ -955,7 +957,8 @@ void __stdcall FEManager_Render_Hook()
 	// NOTE FOR MODDERS: Please, for the love of everything that exists AVOID USING TEXMOD
 	//Direct3DDevice9* g_pd3dDevice = *(Direct3DDevice9**)NFS_D3D9_DEVICE_ADDRESS;
 
-	g_pd3dDevice->_implicit_swapchain->_runtime->on_nfs_present(); // render ReShade BEFORE FE renders ingame! TODO: dig deeper and make ONLY ReShade UI above the FE! MW done!
+	if (g_pd3dDevice && g_pd3dDevice->_implicit_swapchain && g_pd3dDevice->_implicit_swapchain->_runtime)
+		g_pd3dDevice->_implicit_swapchain->_runtime->on_nfs_present(); // render ReShade BEFORE FE renders ingame! TODO: dig deeper and make ONLY ReShade UI above the FE! MW done!
 	FEManager_Render(TheThis);
 }
 #endif
