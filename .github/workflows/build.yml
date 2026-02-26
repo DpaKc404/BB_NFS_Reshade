@@ -1,0 +1,85 @@
+name: Build NFS ReShade
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - config: Release
+            game: MW
+            display_name: "NFS Most Wanted"
+          - config: Release-CB
+            game: Carbon
+            display_name: "NFS Carbon"
+          - config: Release-UG
+            game: UG
+            display_name: "NFS Underground"
+          - config: Release-UG2
+            game: UG2
+            display_name: "NFS Underground 2"
+          - config: Release-PS
+            game: PS
+            display_name: "NFS ProStreet"
+          - config: Release-UC
+            game: UC
+            display_name: "NFS Undercover"
+
+    name: Build ${{ matrix.display_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build ${{ matrix.display_name }} (32-bit)
+        run: |
+          msbuild ReShade.sln /p:Configuration="${{ matrix.config }}" /p:Platform=32-bit /m /v:minimal
+
+      - name: Upload ${{ matrix.display_name }} DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3d9-${{ matrix.game }}
+          path: './bin/Win32/${{ matrix.config }}/d3d9.dll'
+          if-no-files-found: warn
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Organize artifacts
+        run: |
+          mkdir -p release
+          for game in MW Carbon UG UG2 PS UC; do
+            if [ -d "artifacts/d3d9-${game}" ]; then
+              cp "artifacts/d3d9-${game}/d3d9.dll" "release/d3d9_${game}.dll" 2>/dev/null || true
+            fi
+          done
+          ls -la release/
+
+      - name: Upload combined release
+        uses: actions/upload-artifact@v4
+        with:
+          name: NFS-ReShade-All-Games
+          path: release/
+          if-no-files-found: warn
